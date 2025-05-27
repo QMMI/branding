@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DefyGravity Sphere</title>
+  <style>
+    body { margin: 0; background: black; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const w = canvas.width;
+const h = canvas.height;
+
+let scaleFactor = 1.0; // ✨ 缩放因子
+let radius = 200;
+
+const numPoints = 1000;
+const letters = "defygravity";
+const points = [];
+
+// ✅ 随机在球面生成点
+for (let i = 0; i < numPoints; i++) {
+  const theta = Math.acos(2 * Math.random() - 1);
+  const phi = 2 * Math.PI * Math.random();
+  const x = radius * Math.sin(theta) * Math.cos(phi);
+  const y = radius * Math.sin(theta) * Math.sin(phi);
+  const z = radius * Math.cos(theta);
+  const char = letters[Math.floor(Math.random() * letters.length)];
+  points.push({ x, y, z, char });
+}
+
+// ✅ 鼠标旋转
+let angleX = 0;
+let angleY = 0;
+let isDragging = false;
+let lastX, lastY;
+
+canvas.addEventListener("mousedown", (e) => {
+  isDragging = true;
+  lastX = e.clientX;
+  lastY = e.clientY;
+});
+canvas.addEventListener("mousemove", (e) => {
+  if (isDragging) {
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    angleY += dx * 0.005;
+    angleX += dy * 0.005;
+    lastX = e.clientX;
+    lastY = e.clientY;
+  }
+});
+canvas.addEventListener("mouseup", () => isDragging = false);
+canvas.addEventListener("mouseleave", () => isDragging = false);
+
+// ✅ 滚轮缩放
+canvas.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  scaleFactor += e.deltaY * -0.001;
+  scaleFactor = Math.min(Math.max(scaleFactor, 0.2), 3.0); // 限制范围
+  radius = 200 * scaleFactor;
+});
+
+// ✅ 背景粒子
+let mouseX = w / 2, mouseY = h / 2;
+const bgParticles = [];
+for (let i = 0; i < 150; i++) {
+  bgParticles.push({
+    x: Math.random() * w,
+    y: Math.random() * h,
+    vx: 0,
+    vy: 0,
+  });
+}
+canvas.addEventListener("mousemove", (e) => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+
+// ✅ 旋转函数
+function rotateX(p, angle) {
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  return {
+    x: p.x,
+    y: p.y * cos - p.z * sin,
+    z: p.y * sin + p.z * cos,
+    char: p.char
+  };
+}
+function rotateY(p, angle) {
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  return {
+    x: p.x * cos - p.z * sin,
+    y: p.y,
+    z: p.x * sin + p.z * cos,
+    char: p.char
+  };
+}
+
+// ✅ 主绘制函数
+function draw() {
+  // ✨ 背景粒子绘制
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, w, h);
+
+  for (let p of bgParticles) {
+    const dx = mouseX - p.x;
+    const dy = mouseY - p.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const force = Math.min(5 / (dist + 50), 0.05);
+    p.vx += dx * force;
+    p.vy += dy * force;
+    p.vx *= 0.92;
+    p.vy *= 0.92;
+    p.x += p.vx;
+    p.y += p.vy;
+
+    if (p.x < 0 || p.x > w || p.y < 0 || p.y > h) {
+      p.x = Math.random() * w;
+      p.y = Math.random() * h;
+      p.vx = 0;
+      p.vy = 0;
+    }
+
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 1.2, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+
+  const centerX = w / 2;
+  const centerY = h / 2;
+
+  if (!isDragging) {
+    angleY += 0.002;
+    angleX += 0.001;
+  }
+
+  const rendered = [];
+
+  for (let i = 0; i < points.length; i++) {
+    let p = rotateX(points[i], angleX);
+    p = rotateY(p, angleY);
+
+    const scale = 400 / (400 + p.z);
+    const x2d = p.x * scale + centerX;
+    const y2d = p.y * scale + centerY;
+
+    const depth = (p.z + radius) / (2 * radius);
+    let alpha;
+    if (depth < 0.5) {
+      alpha = 1;
+    } else {
+      alpha = 1 - (depth - 0.5) * 2;
+      alpha = Math.max(0.4, alpha);
+    }
+
+    const gb = Math.floor(255 * depth); // 远处更灰
+    const fontSize = 8 * scale;
+    rendered.push({
+      x: x2d,
+      y: y2d,
+      char: p.char,
+      color: `rgb(255,${gb},${gb})`,
+      size: fontSize,
+      z: p.z
+    });
+  }
+
+  rendered.sort((a, b) => b.z - a.z);
+  for (let r of rendered) {
+    ctx.fillStyle = r.color;
+    ctx.font = `${r.size}px sans-serif`;
+    ctx.fillText(r.char, r.x, r.y);
+  }
+
+  requestAnimationFrame(draw);
+}
+
+draw();
+</script>
+</body>
+</html>
