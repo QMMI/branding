@@ -108,6 +108,36 @@ function rotateY(p, angle) {
 
 // ✅ 主绘制函数
 function draw() {
+  // 放在 draw() 函数内顶部
+const now = Date.now() / 1000; // 当前时间（秒）
+const t = now % 6; // 6 秒循环
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+// 获取当前插值颜色
+let r, g, b;
+if (t < 2) {
+  // green -> teal
+  const k = t / 2;
+  r = lerp(1, 1, k);
+  g = lerp(136, 160, k);
+  b = lerp(55, 198, k);
+} else if (t < 4) {
+  // teal -> red
+  const k = (t - 2) / 2;
+  r = lerp(1, 255, k);
+  g = lerp(160, 0, k);
+  b = lerp(198, 0, k);
+} else {
+  // red -> green
+  const k = (t - 4) / 2;
+  r = lerp(255, 1, k);
+  g = lerp(0, 136, k);
+  b = lerp(0, 55, k);
+}
+const dynamicColor = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
   // ✨ 背景粒子绘制
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, w, h);
@@ -156,25 +186,17 @@ function draw() {
     const y2d = p.y * scale + centerY;
 
     const depth = (p.z + radius) / (2 * radius);
-    let alpha;
-    if (depth < 0.5) {
-      alpha = 1;
-    } else {
-      alpha = 1 - (depth - 0.5) * 2;
-      alpha = Math.max(0.4, alpha);
-    }
 
-    const gb = Math.floor(255 * depth); // 远处更灰
-    const fontSize = 8 * scale;
-    rendered.push({
-      x: x2d,
-      y: y2d,
-      char: p.char,
-      color: `rgb(255,${gb},${gb})`,
-      size: fontSize,
-      z: p.z
-    });
-  }
+const fontSize = 8 * scale;
+rendered.push({
+  x: x2d,
+  y: y2d,
+  char: p.char,
+  color: dynamicColor,
+  size: fontSize,
+  z: p.z
+});
+}
 
   rendered.sort((a, b) => b.z - a.z);
   for (let r of rendered) {
